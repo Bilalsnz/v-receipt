@@ -5,7 +5,7 @@
 
 ## Abstract
 
-AI-agent observability systems commonly record events such as tool invocations, tool outputs, and decisions. A conventional log, however, may be editable by the process or infrastructure that produced it. This project investigates whether a small cryptographic receipt layer can make such records tamper-evident and independently verifiable. V-Receipt is a dependency-free TypeScript prototype that canonicalizes JSON payloads, hashes each payload, chains records using SHA-256, and signs each block using either HMAC-SHA256 or Ed25519. Its verifier checks the chain sequentially and reports the first failing index. On an Infinix X6725B running Android 15 and Node.js v26.13.0, a synthetic benchmark observed 100% detection across 120 adversarial trials and 0% false positives across 24 clean trials for each algorithm. Mean local append latency was 0.6034 ms/step for HMAC-SHA256 and 0.6778 ms/step for Ed25519. These are single-run results on one device, not evidence of universal security or production performance. The prototype does not establish that logged events are truthful, that the signing host is uncompromised, or that a valid prefix is complete without an external checkpoint.
+AI-agent observability systems commonly record events such as tool invocations, tool outputs, and decisions. A conventional log, however, may be editable by the process or infrastructure that produced it. This project investigates whether a small cryptographic receipt layer can make such records tamper-evident and independently verifiable. V-Receipt is a dependency-free TypeScript prototype that canonicalizes JSON payloads, hashes each payload, chains records using SHA-256, and signs each block using either HMAC-SHA256 or Ed25519. Its verifier checks the chain sequentially and reports the first failing index. On an Infinix X6725B running Android 15 and Node.js v26.13.0, five benchmark invocations per algorithm observed 100% detection across 600 adversarial trials and 0% false positives across 120 clean trials for each algorithm. The mean of per-run mean local append latency was 0.4886 ms/step for HMAC-SHA256 and 0.6497 ms/step for Ed25519. These are preliminary repeated measurements on one device, not evidence of universal security or production performance. The prototype does not establish that logged events are truthful, that the signing host is uncompromised, or that a valid prefix is complete without an external checkpoint.
 
 ## 1. Problem statement
 
@@ -70,7 +70,7 @@ The benchmark generates 24 synthetic traces with eight events each (192 genuine 
 
 This creates 120 adversarial trials and 24 clean-log verification trials per algorithm run. The harness reports attack-specific and aggregate detection rates, clean-log false-positive rate, and local append latency.
 
-The benchmark was run once per algorithm on an Infinix X6725B running Android 15 in Termux with Node.js v26.13.0, on 2026-11-16.
+The benchmark was first run once per algorithm and then repeated five times per algorithm on an Infinix X6725B running Android 15 in Termux with Node.js v26.13.0, on 2026-11-16.
 
 ### 3.2 Results
 
@@ -93,9 +93,24 @@ All three benchmark acceptance criteria passed for both algorithms: 100% detecti
 
 These results support only a bounded empirical statement: under the harness's five synthetic tampering operations, this implementation detected all manipulated traces in the observed trials, and no clean trace was rejected. A 0% observed false-positive rate over 24 trials is not proof that the true rate is zero. Similarly, 100% observed detection over 120 trials is not proof against untested attacks.
 
-The harness measures local append latency (canonicalization, hashing, and signing), not end-to-end agent latency or verifier latency. Only one invocation per algorithm was performed. No variance, confidence intervals, repeated-run stability, or cross-device comparison is available.
+The harness measures local append latency (canonicalization, hashing, and signing), not end-to-end agent latency or verifier latency. Five invocations per algorithm were performed on the same device. Across the five invocation-level mean append-latency measurements, sample standard deviation was 0.0898 ms/step for HMAC-SHA256 and 0.0454 ms/step for Ed25519. These small-sample descriptive statistics are not confidence intervals; no cross-device comparison is available.
 
-### 3.3 Threats to validity
+### 3.3 Five-run repeatability check
+
+To assess run-to-run variation, the same benchmark was executed five times for each algorithm on the same device and runtime. Each run contained 120 adversarial trials (24 per attack type) and 24 clean-log trials. Across the five runs, both algorithms detected all 600 adversarial trials and produced no false positives in 120 clean-log trials.
+
+| Metric across five runs | HMAC-SHA256 | Ed25519 |
+|---|---:|---:|
+| Adversarial detections | 600/600 (100.00%) | 600/600 (100.00%) |
+| Clean-log false positives | 0/120 (0.00%) | 0/120 (0.00%) |
+| Mean of per-run mean append latency | 0.4886 ms/step | 0.6497 ms/step |
+| Sample SD of per-run mean append latency | 0.0898 ms/step | 0.0454 ms/step |
+| Range of per-run mean append latency | 0.4109–0.6129 ms/step | 0.6021–0.7069 ms/step |
+| Mean of per-run median append latency | 0.3049 ms/step | 0.5000 ms/step |
+
+Every run passed the three benchmark thresholds. Ed25519's average per-run mean append latency was approximately 33.0% higher than HMAC-SHA256's in this experiment. This is a descriptive result from five runs on one device, not a general performance claim. The sample standard deviations quantify only the observed variation across these five runs and should not be interpreted as confidence intervals.
+
+### 3.4 Threats to validity
 
 The attack set is intentionally small and deterministic. It tests common structural and payload tampering but not key theft, malicious signer behavior, compromised runtime instrumentation, filesystem rollback, concurrent writers, denial of service, or attacks against the host clock. Synthetic traces may not represent production agent workloads. Performance measurements are hardware- and runtime-dependent. The single-run design limits conclusions about latency and error rates.
 
