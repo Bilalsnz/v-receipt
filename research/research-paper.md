@@ -1,11 +1,11 @@
 # V-Receipt: A Minimal Cryptographic Receipt Layer for Auditable AI-Agent Execution
 
 **Track:** Apart Research AI x Epistemics — Track 2: Trust Infrastructure  
-**Status:** Prototype and experimental plan
+**Status:** Prototype evaluated in a single-device synthetic benchmark
 
 ## Abstract
 
-AI-agent observability systems commonly record events such as tool invocations, tool outputs, and decisions. A conventional log, however, may be editable by the process or infrastructure that produced it. This project investigates whether a small cryptographic receipt layer can make such records tamper-evident and independently verifiable. V-Receipt is a dependency-free TypeScript prototype that canonicalizes JSON payloads, hashes each payload, chains records using SHA-256, and signs each block using either HMAC-SHA256 or Ed25519. Its verifier checks the chain sequentially and reports the first failing index. A synthetic benchmark exercises five classes of log manipulation. The prototype demonstrates a concrete integrity mechanism, while its evaluation is intentionally scoped: it does not establish that logged events are truthful, that the signing host is uncompromised, or that a valid prefix is complete without an external checkpoint.
+AI-agent observability systems commonly record events such as tool invocations, tool outputs, and decisions. A conventional log, however, may be editable by the process or infrastructure that produced it. This project investigates whether a small cryptographic receipt layer can make such records tamper-evident and independently verifiable. V-Receipt is a dependency-free TypeScript prototype that canonicalizes JSON payloads, hashes each payload, chains records using SHA-256, and signs each block using either HMAC-SHA256 or Ed25519. Its verifier checks the chain sequentially and reports the first failing index. On an Infinix X6725B running Android 15 and Node.js v26.13.0, a synthetic benchmark observed 100% detection across 120 adversarial trials and 0% false positives across 24 clean trials for each algorithm. Mean local append latency was 0.6034 ms/step for HMAC-SHA256 and 0.6778 ms/step for Ed25519. These are single-run results on one device, not evidence of universal security or production performance. The prototype does not establish that logged events are truthful, that the signing host is uncompromised, or that a valid prefix is complete without an external checkpoint.
 
 ## 1. Problem statement
 
@@ -70,25 +70,36 @@ The benchmark generates 24 synthetic traces with eight events each (192 genuine 
 
 This creates 120 adversarial trials and 24 clean-log verification trials per algorithm run. The harness reports attack-specific and aggregate detection rates, clean-log false-positive rate, and local append latency.
 
+The benchmark was run once per algorithm on an Infinix X6725B running Android 15 in Termux with Node.js v26.13.0, on 2026-11-16.
+
 ### 3.2 Results
 
-**Results must be populated from an actual run on the submitting device.** The repository's `benchmark.ts` prints a Markdown table. Do not claim 100% detection, 0% false positives, or sub-2ms latency until the run has produced those measurements.
+| Metric | HMAC-SHA256 | Ed25519 |
+|---|---:|---:|
+| Genuine events generated | 192 | 192 |
+| Clean verification trials | 24 | 24 |
+| Adversarial trials | 120 | 120 |
+| Argument mutation detected | 24/24 (100%) | 24/24 (100%) |
+| Step deletion detected | 24/24 (100%) | 24/24 (100%) |
+| Output spoofing detected | 24/24 (100%) | 24/24 (100%) |
+| Block reordering detected | 24/24 (100%) | 24/24 (100%) |
+| Event injection detected | 24/24 (100%) | 24/24 (100%) |
+| Overall tamper detection | 120/120 (100%) | 120/120 (100%) |
+| False positive rate | 0.00% | 0.00% |
+| Mean append latency | 0.6034 ms/step | 0.6778 ms/step |
+| Median append latency | 0.2868 ms/step | 0.4594 ms/step |
 
-Record at minimum:
+All three benchmark acceptance criteria passed for both algorithms: 100% detection in the tested adversarial trials, 0% false positives in the clean trials, and mean append latency below 2 ms. In this run, Ed25519 mean append latency was 0.0744 ms/step higher than HMAC-SHA256 (approximately 12.3% higher relative to HMAC). Both remained below the stated threshold.
 
-- Device model and Android/Termux version.
-- Node.js version.
-- Signature algorithm.
-- Run date and number of repetitions.
-- Attack counts and detections by attack type.
-- Clean verification failures.
-- Mean and median append latency.
+These results support only a bounded empirical statement: under the harness's five synthetic tampering operations, this implementation detected all manipulated traces in the observed trials, and no clean trace was rejected. A 0% observed false-positive rate over 24 trials is not proof that the true rate is zero. Similarly, 100% observed detection over 120 trials is not proof against untested attacks.
 
-The current harness measures local append latency (canonicalization, hashing, and signing), not end-to-end agent latency or verifier latency. A stronger study should repeat runs, report variance or percentiles, and compare HMAC with Ed25519 on the same device.
+The harness measures local append latency (canonicalization, hashing, and signing), not end-to-end agent latency or verifier latency. Only one invocation per algorithm was performed. No variance, confidence intervals, repeated-run stability, or cross-device comparison is available.
 
 ### 3.3 Threats to validity
 
-The attack set is intentionally small and deterministic. It tests common structural and payload tampering but not key theft, malicious signer behavior, compromised runtime instrumentation, filesystem rollback, concurrent writers, denial of service, or attacks against the host clock. Synthetic traces may not represent production agent workloads. Performance measurements are hardware- and runtime-dependent.
+The attack set is intentionally small and deterministic. It tests common structural and payload tampering but not key theft, malicious signer behavior, compromised runtime instrumentation, filesystem rollback, concurrent writers, denial of service, or attacks against the host clock. Synthetic traces may not represent production agent workloads. Performance measurements are hardware- and runtime-dependent. The single-run design limits conclusions about latency and error rates.
+
+A further limitation is chain truncation: if an auditor receives only a shortened but otherwise valid prefix, the chain alone cannot prove that later records existed. An independently retained chain-head checkpoint, sequence commitment, or external anchoring mechanism is needed to detect this form of omission.
 
 ## 4. Governance and real-world impact
 
@@ -98,7 +109,9 @@ The receipt layer complements rather than replaces observability. It does not pr
 
 ## 5. Conclusion
 
-V-Receipt explores a small, implementable trust primitive for agent observability: canonicalized, hash-chained, cryptographically signed execution receipts. Ed25519 provides a practical route to third-party verification without sharing the signing secret. The prototype and benchmark provide a reproducible starting point for evaluating integrity and overhead. The central limitation remains that cryptographic integrity is not equivalent to factual truth or completeness; external anchoring and trustworthy event capture are necessary for stronger audit claims.
+V-Receipt explores a small, implementable trust primitive for agent observability: canonicalized, hash-chained, cryptographically signed execution receipts. In a single-device synthetic benchmark, both HMAC-SHA256 and Ed25519 detected all 120 tested manipulations per algorithm, with no false positives among 24 clean trials. Mean local append latency was below 1 ms per step for both modes on the tested device. Ed25519 provides a practical route to third-party verification without sharing the signing secret, at a modestly higher observed append cost in this run.
+
+The findings are preliminary. They demonstrate feasibility under a bounded test harness, not comprehensive security. Cryptographic integrity is not equivalent to factual truth or completeness; external anchoring, trustworthy event capture, key protection, and broader adversarial evaluation are necessary for stronger audit claims.
 
 ## References and related work to verify before submission
 
