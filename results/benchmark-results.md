@@ -13,7 +13,7 @@
 
 These are measurements from the submitting device. They are not estimates or results from a desktop environment.
 
-## HMAC-SHA256
+## HMAC-SHA256 — initial baseline run
 
 | Attack | Attempts | Detected | Detection rate |
 |---|---:|---:|---:|
@@ -34,7 +34,7 @@ These are measurements from the submitting device. They are not estimates or res
 | False-positive criterion (0%) | PASS |
 | Mean latency criterion (<2 ms) | PASS |
 
-## Ed25519
+## Ed25519 — initial baseline run
 
 | Attack | Attempts | Detected | Detection rate |
 |---|---:|---:|---:|
@@ -55,7 +55,7 @@ These are measurements from the submitting device. They are not estimates or res
 | False-positive criterion (0%) | PASS |
 | Mean latency criterion (<2 ms) | PASS |
 
-## Comparison
+## Initial baseline comparison
 
 | Metric | HMAC-SHA256 | Ed25519 |
 |---|---:|---:|
