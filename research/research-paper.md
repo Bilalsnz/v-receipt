@@ -1,5 +1,8 @@
 # V-Receipt: A Minimal Cryptographic Receipt Layer for Auditable AI-Agent Execution
 
+**Author:** Bilalsnz  
+**Affiliation:** Independent Researcher, Nigeria  
+
 **Track:** Apart Research AI x Epistemics — Track 2: Trust Infrastructure  
 **Status:** Prototype evaluated in a single-device synthetic benchmark
 
